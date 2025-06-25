@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queerocity - Agra</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Fonts: Straighter font for title -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark-bg: #1e1e1e;
+            --list-item-bg: #2d2d2d;
+            --active-bg: #003b5c;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --pin-color: #f72585;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; font-family: 'Poppins', sans-serif; overflow: hidden; }
+
+        /* Map background tinted light pink */
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1;
+            filter: sepia(0.1) hue-rotate(-15deg) saturate(1.2);
+            background-color: #ffe6ec;
+        }
+
+        /* Title Overlay */
+        .title-overlay { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); z-index:1001; pointer-events:none; }
+        .title-overlay h1 {
+            font-family: 'Roboto Slab', serif;
+            font-size: 4.5rem;
+            color: #d81b60;
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.7);
+        }
+
+        /* Slimmer List Panel */
+        #list-panel { position:absolute; top:20px; left:20px; width: 160px; max-height: calc(100vh - 40px);
+            background: var(--dark-bg); border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);
+            overflow-y:auto; color:var(--text-primary); font-size:0.8rem; z-index:1000;
+        }
+        .list-item { display:flex; align-items:center; padding:4px 8px; cursor:pointer;
+            border-bottom:1px solid var(--list-item-bg); transition:background-color .2s;
+        }
+        .list-item:hover { background:var(--list-item-bg); }
+        .list-item.active { background:var(--active-bg); }
+        .list-item .icon { flex-shrink:0; margin-right:6px; }
+        .list-item .name { flex-grow:1; font-weight:500; }
+
+        /* Emoji Pin Icon: doubled size */
+        .pin-emoji {
+            font-size: 48px;
+            line-height: 1;
+        }
+
+        /* Popup Styling: wider and auto height */
+        .leaflet-popup-content-wrapper {
+            max-width: 240px;
+        }
+        .info-popup .popup-title { font-weight:bold; font-size:16px; color:#d81b60; margin-bottom:6px; }
+        .info-popup .popup-desc { font-size:13px; line-height:1.4; color:#555; margin-bottom:8px; }
+        .info-popup .gmaps-button { display:inline-block; text-decoration:none; background:var(--pin-color);
+            color:#fff; padding:6px 10px; border-radius:4px; font-size:12px; font-weight:600;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="list-panel"></div>
+    <div class="title-overlay"><h1>Queerocity</h1></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function(){
+        // MAP INIT
+        var map = L.map('map').setView([27.1767, 78.0081], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution:'© OpenStreetMap contributors © CARTO'
+        }).addTo(map);
+
+        // DATA
+        var places = [
+            {name: "Sheroes Hangout Cafe", coords: [27.1600, 78.0536], description: "A pioneering cafe run by acid attack survivors, promoting inclusivity and providing a safe space for all communities."},
+            {name: "Kala kutir", coords: [27.1648, 78.0803], description: "An art and cultural center that welcomes diverse communities and hosts inclusive events and workshops."},
+            {name: "Peshkashh", coords: [27.1610, 78.0450], description: "A modern cafe known for its welcoming atmosphere and as a comfortable hangout spot for young people."},
+            {name: "Tomb of Firoz Khan Khwajasara", coords: [27.2025, 77.9897], description: "A historically significant tomb of a 'Khwajasara' (third gender) representing a piece of queer history in Agra."},
+            {name: "Hariyali Vatika", coords: [27.1475, 78.0435], description: "A community garden and restaurant space focused on nature and tranquility, offering a safe and peaceful environment."}
+        ];
+
+        var listPanel = document.getElementById('list-panel');
+        var markers = [];
+        var icon = L.divIcon({ html: '<div class="pin-emoji">📍</div>', className: '', iconSize: [48, 48], iconAnchor: [24, 48] });
+
+        places.forEach(function(p, i) {
+            p.googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${p.coords[0]},${p.coords[1]}`;
+            var marker = L.marker(p.coords, { icon: icon }).addTo(map)
+                .bindPopup(`<div class="info-popup"><div class="popup-title">${p.name}</div><div class="popup-desc">${p.description}</div><a href="${p.googleMapsUrl}" target="_blank" class="gmaps-button">View on Google Maps</a></div>`);
+            markers.push(marker);
+
+            var li = document.createElement('div');
+            li.className = 'list-item';
+            li.innerHTML = `<div class="icon">${i+1}.</div><div class="name">${p.name}</div>`;
+            li.addEventListener('click', function(){
+                map.flyTo(p.coords, 15);
+                markers[i].openPopup();
+                document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
+                li.classList.add('active');
+            });
+            listPanel.appendChild(li);
+        });
+    });
+    </script>
+</body>
+</html>
