@@ -23,7 +23,7 @@
             background-color: #ffe6ec;
         }
 
-        #list-panel { position:absolute; top:20px; left:20px; width: 160px; max-height: calc(100vh - 40px);
+        #list-panel { position:absolute; bottom:20px; left:20px; width: 160px; max-height: calc(100vh - 40px);
             background: var(--dark-bg); border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);
             overflow-y:auto; color:var(--text-primary); font-size:0.8rem; z-index:1000;
         }
@@ -41,27 +41,30 @@
         .info-popup .gmaps-button { display:inline-block; text-decoration:none; background:var(--pin-color);
             color:#fff; padding:6px 10px; border-radius:4px; font-size:12px; font-weight:600;
         }
+        .info-popup strong { color: #333; }
 
         .leaflet-div-icon { background: transparent; border: none; }
         .unclipped-marker { overflow: visible !important; }
 
-        /* --- NEW CSS FOR GPS BUTTON --- */
         .leaflet-control-locate a {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333'%3E%3Cpath d='M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z'/%3E%3C/svg%3E");
-            background-size: 20px 20px;
-            background-repeat: no-repeat;
-            background-position: center;
-            width: 30px;
-            height: 30px;
-            display: block;
-            border-radius: 4px;
-            border: 2px solid rgba(0,0,0,0.2);
+            background-size: 20px 20px; background-repeat: no-repeat; background-position: center;
+            width: 30px; height: 30px; display: block; border-radius: 4px; border: 2px solid rgba(0,0,0,0.2);
             background-color: white;
         }
-        .leaflet-control-locate a:hover {
-            background-color: #f4f4f4;
+        .leaflet-control-locate a:hover { background-color: #f4f4f4; }
+        
+        .location-label {
+            background-color: rgba(30, 30, 30, 0.75);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            border: none;
+            box-shadow: none;
+            white-space: nowrap;
         }
-
     </style>
 </head>
 <body>
@@ -71,20 +74,15 @@
     <script>
     document.addEventListener('DOMContentLoaded', function(){
         // MAP INIT
-        var map = L.map('map').setView([27.1767, 78.0081], 13);
+        var map = L.map('map', {
+            zoomControl: false 
+        }).setView([27.1767, 78.0081], 13);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
             attribution:'© OpenStreetMap contributors © CARTO'
         }).addTo(map);
-
-        // DATA
-        var places = [
-            {name: "Tomb of Firoz Khan Khwajasara", coords: [27.2025, 77.9897], description: "A historically significant tomb of a 'Khwajasara' (third gender) representing a piece of queer history in Agra."},
-            {name: "Sheroes Hangout Cafe", coords: [27.1600, 78.0536], description: "A pioneering cafe run by acid attack survivors, promoting inclusivity and providing a safe space for all communities."},
-            {name: "Kala kutir", coords: [27.1648, 78.0803], description: "An art and cultural center that welcomes diverse communities and hosts inclusive events and workshops."},
-            {name: "Peshkashh", coords: [27.1610, 78.0450], description: "A modern cafe known for its welcoming atmosphere and as a comfortable hangout spot for young people."},
-            {name: "Hariyali Vatika", coords: [27.1475, 78.0435], description: "A community garden and restaurant space focused on nature and tranquility, offering a safe and peaceful environment."}
-        ];
 
         var listPanel = document.getElementById('list-panel');
         var markers = [];
@@ -94,7 +92,7 @@
             iconUrl: 'pin.png',
             iconSize:     [50, 50],
             iconAnchor:   [50, 50],
-            popupAnchor:  [-25, -55]
+            popupAnchor:  [0, -50]
         });
 
         // 2. SPECIAL title logo icon
@@ -102,66 +100,88 @@
             className: 'unclipped-marker',
             iconSize: [289*1.5, 100*1.5], 
             iconAnchor: [289 * (190/788)*1.5, 100 * (190/272)*1.5],
-            html: `<img src="title.png" style="width: 434px; transform-origin: 105px 105px; transform: rotate(-30deg);">`,
+            html: `<img src="title.png" style="width: 434px; transform-origin: 105px 105px; transform: rotate(0deg);">`,
             popupAnchor: [0, -66]
         });
-        
-        places.forEach(function(p, i) {
-            p.googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${p.coords[0]},${p.coords[1]}`;
-            var marker;
-            if (i === 0) { marker = L.marker(p.coords, { icon: titleLogoIcon }).addTo(map); } 
-            else { marker = L.marker(p.coords, { icon: regularPinIcon }).addTo(map); }
-            marker.bindPopup(`<div class="info-popup"><div class="popup-title">${p.name}</div><div class="popup-desc">${p.description}</div><a href="${p.googleMapsUrl}" target="_blank" class="gmaps-button">View on Google Maps</a></div>`);
-            markers.push(marker);
-            var li = document.createElement('div');
-            li.className = 'list-item';
-            li.innerHTML = `<div class="icon">${i+1}.</div><div class="name">${p.name}</div>`;
-            li.addEventListener('click', function(){
-                map.flyTo(p.coords, 15);
-                markers[i].openPopup();
-                document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-                li.classList.add('active');
+
+        // Main function to process places data
+        function processPlaces(places) {
+            places.forEach(function(p, i) {
+                // Ensure coordinates are numbers
+                var coords = [parseFloat(p.latitude), parseFloat(p.longitude)];
+                if (isNaN(coords[0]) || isNaN(coords[1])) {
+                    console.warn("Skipping location with invalid coordinates:", p);
+                    return; // Skip this entry if coordinates are invalid
+                }
+                var marker;
+                
+                var iconToUse = (i === 0) ? titleLogoIcon : regularPinIcon;
+                marker = L.marker(coords, { icon: iconToUse }).addTo(map);
+                
+                marker.bindTooltip(p.name, {
+                    permanent: true, direction: 'bottom',
+                    offset: [0, 10], className: 'location-label'
+                });
+
+                var popupContent = `
+                    <div class="info-popup">
+                        <div class="popup-desc">
+                            <strong>Name:</strong> ${p.name}<br>
+                            <strong>Type:</strong> ${p.type}<br>
+                            <strong>Description:</strong> ${p.description}
+                        </div>
+                        <a href="${p.google_maps_link}" target="_blank" class="gmaps-button">View on Google Maps</a>
+                    </div>`;
+                marker.bindPopup(popupContent);
+                markers.push(marker);
+
+                var li = document.createElement('div');
+                li.className = 'list-item';
+                li.innerHTML = `<div class="icon">${i+1}.</div><div class="name">${p.name}</div>`;
+                li.addEventListener('click', function(){
+                    map.flyTo(coords, 15);
+                    markers[i].openPopup();
+                    document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
+                    li.classList.add('active');
+                });
+                listPanel.appendChild(li);
             });
-            listPanel.appendChild(li);
-        });
-
-        // --- NEW GPS BUTTON LOGIC ---
+        }
+        
+        // --- FETCH DATA FROM SHEETDB API ---
+        fetch('https://sheetdb.io/api/v1/v2z8khcxmamuj')
+            .then(response => response.json())
+            .then(data => {
+                // The 'data' from SheetDB is already an array of objects, perfect for our function.
+                processPlaces(data);
+            })
+            .catch(error => {
+                console.error('Error fetching data from SheetDB:', error);
+                alert("Could not load location data from the spreadsheet. Please check the API link or your internet connection.");
+            });
+        
+        // --- GPS BUTTON LOGIC ---
         var userLocationMarker = null;
-
         L.Control.Locate = L.Control.extend({
             onAdd: function(map) {
                 var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-locate');
                 var link = L.DomUtil.create('a', '', container);
-                link.href = '#';
-                link.title = 'Locate me';
-
+                link.href = '#'; link.title = 'Locate me';
                 L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', function() {
                     navigator.geolocation.getCurrentPosition(function(position) {
                         var latlng = [position.coords.latitude, position.coords.longitude];
-                        if (userLocationMarker) {
-                            userLocationMarker.setLatLng(latlng);
-                        } else {
-                            userLocationMarker = L.circleMarker(latlng, {
-                                radius: 8,
-                                color: '#007bff',
-                                weight: 3,
-                                fillColor: '#fff',
-                                fillOpacity: 1
-                            }).addTo(map);
+                        if (!userLocationMarker) {
+                            userLocationMarker = L.circleMarker(latlng, { radius: 8, color: '#007bff', weight: 3, fillColor: '#fff', fillOpacity: 1 }).addTo(map);
                         }
+                        userLocationMarker.setLatLng(latlng);
                         map.flyTo(latlng, 13);
                         userLocationMarker.bindPopup("You are here.").openPopup();
-                    }, function(error) {
-                        alert("Could not get your location: " + error.message);
-                    });
+                    }, function(error) { alert("Could not get your location: " + error.message); });
                 });
                 return container;
             }
         });
-
         new L.Control.Locate({ position: 'bottomright' }).addTo(map);
-        // --- END OF NEW LOGIC ---
-
     });
     </script>
 </body>
