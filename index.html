@@ -42,16 +42,26 @@
             color:#fff; padding:6px 10px; border-radius:4px; font-size:12px; font-weight:600;
         }
 
-        /* --- CSS FIX FOR ROTATION --- */
-        /* Make the marker's container div invisible */
-        .leaflet-div-icon {
-            background: transparent;
-            border: none;
+        .leaflet-div-icon { background: transparent; border: none; }
+        .unclipped-marker { overflow: visible !important; }
+
+        /* --- NEW CSS FOR GPS BUTTON --- */
+        .leaflet-control-locate a {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333'%3E%3Cpath d='M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z'/%3E%3C/svg%3E");
+            background-size: 20px 20px;
+            background-repeat: no-repeat;
+            background-position: center;
+            width: 30px;
+            height: 30px;
+            display: block;
+            border-radius: 4px;
+            border: 2px solid rgba(0,0,0,0.2);
+            background-color: white;
         }
-        /* Prevents the rotated image from being cut off by the container */
-        .unclipped-marker {
-            overflow: visible !important;
+        .leaflet-control-locate a:hover {
+            background-color: #f4f4f4;
         }
+
     </style>
 </head>
 <body>
@@ -79,9 +89,7 @@
         var listPanel = document.getElementById('list-panel');
         var markers = [];
         
-        // --- JAVASCRIPT CORRECTION ---
-
-        // 1. REGULAR pin icon remains the same.
+        // 1. REGULAR pin icon
         var regularPinIcon = L.icon({
             iconUrl: 'pin.png',
             iconSize:     [50, 50],
@@ -89,39 +97,22 @@
             popupAnchor:  [-25, -55]
         });
 
-        // 2. SPECIAL title logo icon, correctly implemented.
+        // 2. SPECIAL title logo icon
         var titleLogoIcon = L.divIcon({
-            // Set a class to prevent clipping and make the container div invisible
             className: 'unclipped-marker',
-            
-            // The size of the un-rotated image. This is our reference frame.
             iconSize: [289*1.5, 100*1.5], 
-            
-            // The anchor point relative to the un-rotated image.
-            iconAnchor: [289 * (190/788)*1.5, 100 * (190/272)*1.5], // [75, 66]
-            
-            // HTML for the icon: an image with the rotation style applied.
-            // transform-origin: left bottom; -> sets the pivot point for rotation.
-            // transform: rotate(-30deg); -> rotates the image counter-clockwise.
+            iconAnchor: [289 * (190/788)*1.5, 100 * (190/272)*1.5],
             html: `<img src="title.png" style="width: 434px; transform-origin: 105px 105px; transform: rotate(-30deg);">`,
-            
-            // Adjust popup anchor to appear nicely above the rotated icon
             popupAnchor: [0, -66]
         });
         
         places.forEach(function(p, i) {
             p.googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${p.coords[0]},${p.coords[1]}`;
-            
             var marker;
-            if (i === 0) {
-                marker = L.marker(p.coords, { icon: titleLogoIcon }).addTo(map);
-            } else {
-                marker = L.marker(p.coords, { icon: regularPinIcon }).addTo(map);
-            }
-            
+            if (i === 0) { marker = L.marker(p.coords, { icon: titleLogoIcon }).addTo(map); } 
+            else { marker = L.marker(p.coords, { icon: regularPinIcon }).addTo(map); }
             marker.bindPopup(`<div class="info-popup"><div class="popup-title">${p.name}</div><div class="popup-desc">${p.description}</div><a href="${p.googleMapsUrl}" target="_blank" class="gmaps-button">View on Google Maps</a></div>`);
             markers.push(marker);
-
             var li = document.createElement('div');
             li.className = 'list-item';
             li.innerHTML = `<div class="icon">${i+1}.</div><div class="name">${p.name}</div>`;
@@ -133,6 +124,44 @@
             });
             listPanel.appendChild(li);
         });
+
+        // --- NEW GPS BUTTON LOGIC ---
+        var userLocationMarker = null;
+
+        L.Control.Locate = L.Control.extend({
+            onAdd: function(map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-locate');
+                var link = L.DomUtil.create('a', '', container);
+                link.href = '#';
+                link.title = 'Locate me';
+
+                L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', function() {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        var latlng = [position.coords.latitude, position.coords.longitude];
+                        if (userLocationMarker) {
+                            userLocationMarker.setLatLng(latlng);
+                        } else {
+                            userLocationMarker = L.circleMarker(latlng, {
+                                radius: 8,
+                                color: '#007bff',
+                                weight: 3,
+                                fillColor: '#fff',
+                                fillOpacity: 1
+                            }).addTo(map);
+                        }
+                        map.flyTo(latlng, 13);
+                        userLocationMarker.bindPopup("You are here.").openPopup();
+                    }, function(error) {
+                        alert("Could not get your location: " + error.message);
+                    });
+                });
+                return container;
+            }
+        });
+
+        new L.Control.Locate({ position: 'bottomright' }).addTo(map);
+        // --- END OF NEW LOGIC ---
+
     });
     </script>
 </body>
