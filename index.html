@@ -23,6 +23,51 @@
             background-color: #ffe6ec;
         }
 
+        #title-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            pointer-events: none;
+        }
+        #title-overlay img {
+            width: 434px;
+            max-width: 80vw;
+            height: auto;
+        }
+
+        /* --- NEW: Action Buttons in Top-Left Corner --- */
+        #action-buttons-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        .action-button {
+            display: block;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        }
+        #add-space-btn {
+            background-color: var(--pin-color);
+        }
+        #support-btn {
+            background-color: var(--active-bg);
+        }
+
         #list-panel { position:absolute; bottom:20px; left:20px; width: 160px; max-height: calc(100vh - 40px);
             background: var(--dark-bg); border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);
             overflow-y:auto; color:var(--text-primary); font-size:0.8rem; z-index:1000;
@@ -36,15 +81,11 @@
         .list-item .name { flex-grow:1; font-weight:500; }
 
         .leaflet-popup-content-wrapper { max-width: 240px; }
-        .info-popup .popup-title { font-weight:bold; font-size:16px; color:#d81b60; margin-bottom:6px; }
         .info-popup .popup-desc { font-size:13px; line-height:1.4; color:#555; margin-bottom:8px; }
         .info-popup .gmaps-button { display:inline-block; text-decoration:none; background:var(--pin-color);
             color:#fff; padding:6px 10px; border-radius:4px; font-size:12px; font-weight:600;
         }
         .info-popup strong { color: #333; }
-
-        .leaflet-div-icon { background: transparent; border: none; }
-        .unclipped-marker { overflow: visible !important; }
 
         .leaflet-control-locate a {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333'%3E%3Cpath d='M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z'/%3E%3C/svg%3E");
@@ -69,11 +110,21 @@
 </head>
 <body>
     <div id="map"></div>
+    <div id="title-overlay">
+        <img src="title.png" alt="Queerocity Title">
+    </div>
+
+    <!-- NEW: Action Buttons HTML -->
+    <div id="action-buttons-container">
+        <a href="https://forms.gle/rQdfGK3scP34FAuE6" class="action-button" id="add-space-btn" target="_blank">Add a Space</a>
+        <a href="upi://pay?pa=mahajan.saloni17@okicici&pn=SALONI%20MAHAJAN&aid=uGICAgMC4isy-QQ" class="action-button" id="support-btn">Support Us ❤️</a>
+    </div>
+
     <div id="list-panel"></div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function(){
-        // MAP INIT
         var map = L.map('map', {
             zoomControl: false 
         }).setView([27.1767, 78.0081], 13);
@@ -87,40 +138,30 @@
         var listPanel = document.getElementById('list-panel');
         var markers = [];
         
-        // 1. REGULAR pin icon
+        var isMobile = window.innerWidth <= 768;
+        var pinSize = isMobile ? 40 : 50;
+
         var regularPinIcon = L.icon({
             iconUrl: 'pin.png',
-            iconSize:     [50, 50],
-            iconAnchor:   [50, 50],
-            popupAnchor:  [0, -50]
+            iconSize:     [pinSize, pinSize],
+            iconAnchor:   [pinSize, pinSize], 
+            popupAnchor:  [-pinSize / 2, -pinSize]
         });
 
-        // 2. SPECIAL title logo icon
-        var titleLogoIcon = L.divIcon({
-            className: 'unclipped-marker',
-            iconSize: [289*1.5, 100*1.5], 
-            iconAnchor: [289 * (190/788)*1.5, 100 * (190/272)*1.5],
-            html: `<img src="title.png" style="width: 434px; transform-origin: 105px 105px; transform: rotate(0deg);">`,
-            popupAnchor: [0, -66]
-        });
-
-        // Main function to process places data
         function processPlaces(places) {
             places.forEach(function(p, i) {
-                // Ensure coordinates are numbers
                 var coords = [parseFloat(p.latitude), parseFloat(p.longitude)];
                 if (isNaN(coords[0]) || isNaN(coords[1])) {
                     console.warn("Skipping location with invalid coordinates:", p);
-                    return; // Skip this entry if coordinates are invalid
+                    return;
                 }
-                var marker;
                 
-                var iconToUse = (i === 0) ? titleLogoIcon : regularPinIcon;
-                marker = L.marker(coords, { icon: iconToUse }).addTo(map);
+                var marker = L.marker(coords, { icon: regularPinIcon }).addTo(map);
                 
                 marker.bindTooltip(p.name, {
                     permanent: true, direction: 'bottom',
-                    offset: [0, 10], className: 'location-label'
+                    offset: [-pinSize / 2, 10], 
+                    className: 'location-label'
                 });
 
                 var popupContent = `
@@ -148,11 +189,9 @@
             });
         }
         
-        // --- FETCH DATA FROM SHEETDB API ---
         fetch('https://sheetdb.io/api/v1/v2z8khcxmamuj')
             .then(response => response.json())
             .then(data => {
-                // The 'data' from SheetDB is already an array of objects, perfect for our function.
                 processPlaces(data);
             })
             .catch(error => {
@@ -160,7 +199,6 @@
                 alert("Could not load location data from the spreadsheet. Please check the API link or your internet connection.");
             });
         
-        // --- GPS BUTTON LOGIC ---
         var userLocationMarker = null;
         L.Control.Locate = L.Control.extend({
             onAdd: function(map) {
